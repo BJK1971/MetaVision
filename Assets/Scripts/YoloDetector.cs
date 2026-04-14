@@ -24,6 +24,14 @@ public class YoloDetector : MonoBehaviour
     [Tooltip("Run inference every N frames (1=every frame, 3=skip 2)")]
     [Range(1, 10)] public int inferenceInterval = 1;
 
+    [Header("Smoothing")]
+    [Tooltip("Blend factor for box position smoothing (0=no smoothing, 0.85=very smooth)")]
+    [Range(0f, 0.95f)] public float smoothing = 0.8f;
+    [Tooltip("Min IoU to match detections across frames")]
+    [Range(0.01f, 0.5f)] public float trackingIoUThreshold = 0.15f;
+    [Tooltip("Frames to keep a detection visible after it disappears")]
+    [Range(0, 15)] public int persistenceFrames = 5;
+
     [Header("Input")]
     public Texture2D testTexture; // Fallback for Editor testing
     public int inputWidth = 640;
@@ -39,6 +47,8 @@ public class YoloDetector : MonoBehaviour
     float lastInferenceTime;
     public float InferenceTimeMs => lastInferenceTime;
 
+    List<Detection> trackedDetections = new();
+
     public event Action<List<Detection>> OnDetections;
 
     public struct Detection
@@ -47,6 +57,7 @@ public class YoloDetector : MonoBehaviour
         public int classId;
         public float confidence;
         public string className;
+        public int framesUnseen; // 0 = seen this frame, >0 = persisting
     }
 
     static readonly string[] CocoClasses =
@@ -107,8 +118,9 @@ public class YoloDetector : MonoBehaviour
         using var cpuOutput = gpuOutput.ReadbackAndClone();
         lastInferenceTime = (Time.realtimeSinceStartup - t0) * 1000f;
 
-        var detections = PostProcess(cpuOutput);
-        OnDetections?.Invoke(detections);
+        var rawDetections = PostProcess(cpuOutput);
+        trackedDetections = SmoothDetections(rawDetections, trackedDetections);
+        OnDetections?.Invoke(trackedDetections);
     }
 
     void Update()
@@ -133,6 +145,68 @@ public class YoloDetector : MonoBehaviour
         {
             Detect(testTexture);
         }
+    }
+
+    List<Detection> SmoothDetections(List<Detection> current, List<Detection> previous)
+    {
+        var result = new List<Detection>();
+        var matchedPrev = new bool[previous.Count];
+        var matchedCurr = new bool[current.Count];
+
+        // Match current detections to previous by IoU (same class)
+        for (int i = 0; i < current.Count; i++)
+        {
+            int bestIdx = -1;
+            float bestIoU = trackingIoUThreshold;
+
+            for (int j = 0; j < previous.Count; j++)
+            {
+                if (matchedPrev[j] || previous[j].classId != current[i].classId) continue;
+                float iou = IoU(current[i].box, previous[j].box);
+                if (iou > bestIoU) { bestIoU = iou; bestIdx = j; }
+            }
+
+            if (bestIdx >= 0 && smoothing > 0)
+            {
+                matchedPrev[bestIdx] = true;
+                matchedCurr[i] = true;
+                float s = smoothing;
+                var prev = previous[bestIdx].box;
+                var cur = current[i];
+                result.Add(new Detection
+                {
+                    box = new Rect(
+                        Mathf.Lerp(cur.box.x, prev.x, s),
+                        Mathf.Lerp(cur.box.y, prev.y, s),
+                        Mathf.Lerp(cur.box.width, prev.width, s),
+                        Mathf.Lerp(cur.box.height, prev.height, s)),
+                    classId = cur.classId,
+                    confidence = cur.confidence,
+                    className = cur.className,
+                    framesUnseen = 0
+                });
+            }
+            else
+            {
+                matchedCurr[i] = true;
+                result.Add(current[i]); // new detection
+            }
+        }
+
+        // Persist unmatched previous detections for a few frames
+        for (int j = 0; j < previous.Count; j++)
+        {
+            if (matchedPrev[j]) continue;
+            var prev = previous[j];
+            if (prev.framesUnseen < persistenceFrames)
+            {
+                prev.framesUnseen++;
+                prev.confidence *= 0.9f; // fade confidence
+                result.Add(prev);
+            }
+        }
+
+        return result;
     }
 
     List<Detection> PostProcess(Tensor<float> output)

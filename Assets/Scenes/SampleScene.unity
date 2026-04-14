@@ -733,6 +733,79 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &1536670993
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1536670996}
+  - component: {fileID: 1536670995}
+  - component: {fileID: 1536670994}
+  m_Layer: 0
+  m_Name: YoloSegDetector
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1536670994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536670993}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd2a5a62dcc57e94bb8a7e3b4a7e7c7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ContourRenderer
+  displayDistance: 2
+  lineWidth: 0.004
+  labelSize: 0.4
+--- !u!114 &1536670995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536670993}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc226a1b486bef14f9f718e01b171341, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::YoloSegDetector
+  modelAsset: {fileID: 5022602860645237092, guid: 4bcc1964d4173254b9bf9f5e874c7263, type: 3}
+  confidenceThreshold: 0.5
+  nmsThreshold: 0.45
+  maxDetections: 10
+  maskThreshold: 0.5
+  inferenceInterval: 1
+  contourPoints: 32
+  smoothing: 0.8
+  trackingIoUThreshold: 0.15
+  persistenceFrames: 5
+  inputWidth: 320
+  inputHeight: 320
+  passthroughCamera: {fileID: 2013981725}
+--- !u!4 &1536670996
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536670993}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1572643937
 GameObject:
   m_ObjectHideFlags: 0
@@ -833,6 +906,9 @@ MonoBehaviour:
   nmsThreshold: 0.45
   maxDetections: 20
   inferenceInterval: 3
+  smoothing: 0.6
+  trackingIoUThreshold: 0.3
+  persistenceFrames: 5
   testTexture: {fileID: 0}
   inputWidth: 320
   inputHeight: 320
@@ -1034,3 +1110,4 @@ SceneRoots:
   - {fileID: 1572643939}
   - {fileID: 1314263223}
   - {fileID: 1730786701}
+  - {fileID: 1536670996}
