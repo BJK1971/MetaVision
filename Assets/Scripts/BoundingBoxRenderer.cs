@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 /// <summary>
-/// Renders YOLO bounding boxes as 3D cubes in VR.
+/// Renders YOLO bounding boxes with LineRenderer + TMP labels in VR.
 /// Status indicator: green sphere = LIVE, yellow = WAITING, red = NO INPUT.
-/// All text info is logged to logcat (adb logcat -s Unity).
 /// </summary>
 [RequireComponent(typeof(YoloDetector))]
 public class BoundingBoxRenderer : MonoBehaviour
@@ -13,6 +13,7 @@ public class BoundingBoxRenderer : MonoBehaviour
     public float displayDistance = 2f;
     public float displayWidth = 1.2f;
     public float lineWidth = 0.005f;
+    public float labelSize = 0.4f;
 
     YoloDetector detector;
     List<YoloDetector.Detection> currentDetections = new();
@@ -26,34 +27,24 @@ public class BoundingBoxRenderer : MonoBehaviour
     // Colors by class category
     static readonly Dictionary<int, Color> ClassColors = new()
     {
-        // person
-        {0, Color.green},
-        // vehicles
-        {1, new Color(0.2f, 0.6f, 1f)},  // bicycle - blue
-        {2, new Color(0.2f, 0.6f, 1f)},  // car
-        {3, new Color(0.2f, 0.6f, 1f)},  // motorcycle
-        {4, new Color(0.2f, 0.6f, 1f)},  // airplane
-        {5, new Color(0.2f, 0.6f, 1f)},  // bus
-        {6, new Color(0.2f, 0.6f, 1f)},  // train
-        {7, new Color(0.2f, 0.6f, 1f)},  // truck
-        {8, new Color(0.2f, 0.6f, 1f)},  // boat
-        // animals
+        {0, Color.green}, // person
+        {1, new Color(0.2f, 0.6f, 1f)}, {2, new Color(0.2f, 0.6f, 1f)},  // bicycle, car
+        {3, new Color(0.2f, 0.6f, 1f)}, {4, new Color(0.2f, 0.6f, 1f)},  // motorcycle, airplane
+        {5, new Color(0.2f, 0.6f, 1f)}, {6, new Color(0.2f, 0.6f, 1f)},  // bus, train
+        {7, new Color(0.2f, 0.6f, 1f)}, {8, new Color(0.2f, 0.6f, 1f)},  // truck, boat
         {14, Color.yellow}, {15, Color.yellow}, {16, Color.yellow}, {17, Color.yellow},
         {18, Color.yellow}, {19, Color.yellow}, {20, Color.yellow}, {21, Color.yellow},
-        {22, Color.yellow}, {23, Color.yellow},
-        // electronics
+        {22, Color.yellow}, {23, Color.yellow}, // animals
         {62, Color.cyan}, {63, Color.cyan}, {64, Color.cyan}, {65, Color.cyan},
-        {66, Color.cyan}, {67, Color.cyan},
-        // food
+        {66, Color.cyan}, {67, Color.cyan}, // electronics
         {46, new Color(1f, 0.5f, 0f)}, {47, new Color(1f, 0.5f, 0f)},
         {48, new Color(1f, 0.5f, 0f)}, {49, new Color(1f, 0.5f, 0f)},
         {50, new Color(1f, 0.5f, 0f)}, {51, new Color(1f, 0.5f, 0f)},
         {52, new Color(1f, 0.5f, 0f)}, {53, new Color(1f, 0.5f, 0f)},
-        {54, new Color(1f, 0.5f, 0f)}, {55, new Color(1f, 0.5f, 0f)},
-        // furniture
+        {54, new Color(1f, 0.5f, 0f)}, {55, new Color(1f, 0.5f, 0f)}, // food
         {56, new Color(0.8f, 0.4f, 1f)}, {57, new Color(0.8f, 0.4f, 1f)},
         {58, new Color(0.8f, 0.4f, 1f)}, {59, new Color(0.8f, 0.4f, 1f)},
-        {60, new Color(0.8f, 0.4f, 1f)}, {61, new Color(0.8f, 0.4f, 1f)},
+        {60, new Color(0.8f, 0.4f, 1f)}, {61, new Color(0.8f, 0.4f, 1f)}, // furniture
     };
     float logTimer;
     int totalFrames;
@@ -69,7 +60,6 @@ public class BoundingBoxRenderer : MonoBehaviour
         var rig = FindFirstObjectByType<OVRCameraRig>();
         anchor = rig != null ? rig.centerEyeAnchor : Camera.main?.transform;
 
-        // Status indicator sphere (top-right of view)
         statusIndicator = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         statusIndicator.name = "StatusIndicator";
         Destroy(statusIndicator.GetComponent<Collider>());
@@ -77,7 +67,7 @@ public class BoundingBoxRenderer : MonoBehaviour
         statusMat = CreateUnlitMaterial(Color.red);
         statusIndicator.GetComponent<MeshRenderer>().material = statusMat;
 
-        Debug.Log("[BBR] 3D box renderer started.");
+        Debug.Log("[BBR] 3D box renderer with TMP labels started.");
     }
 
     void OnDestroy()
@@ -96,10 +86,8 @@ public class BoundingBoxRenderer : MonoBehaviour
     {
         if (anchor == null) return;
 
-        // Determine camera status
         string status;
         Color statusColor;
-        bool hasInput = false;
 
         var pcaRef = detector.passthroughCamera;
         if (pcaRef != null)
@@ -111,7 +99,6 @@ public class BoundingBoxRenderer : MonoBehaviour
                 {
                     status = $"LIVE {tex.width}x{tex.height}";
                     statusColor = Color.green;
-                    hasInput = true;
                 }
                 else
                 {
@@ -129,7 +116,6 @@ public class BoundingBoxRenderer : MonoBehaviour
         {
             status = "TEST IMAGE";
             statusColor = Color.cyan;
-            hasInput = true;
         }
         else
         {
@@ -137,7 +123,6 @@ public class BoundingBoxRenderer : MonoBehaviour
             statusColor = Color.red;
         }
 
-        // Update status indicator position and color
         if (statusIndicator != null)
         {
             statusIndicator.transform.position = anchor.position
@@ -148,7 +133,6 @@ public class BoundingBoxRenderer : MonoBehaviour
         if (statusMat != null)
             statusMat.color = statusColor;
 
-        // Log status periodically
         logTimer += Time.deltaTime;
         if (logTimer > 2f)
         {
@@ -163,7 +147,6 @@ public class BoundingBoxRenderer : MonoBehaviour
 
         if (currentDetections == null || currentDetections.Count == 0) return;
 
-        // Use PassthroughCameraAccess to map detection coords to world-space rays
         bool useRaycast = pcaRef != null && pcaRef.IsPlaying;
 
         for (int i = 0; i < currentDetections.Count; i++)
@@ -176,14 +159,11 @@ public class BoundingBoxRenderer : MonoBehaviour
 
             if (useRaycast)
             {
-                // Map YOLO normalized coords to camera viewport (0-1)
-                // YOLO Y is top-down, viewport Y is bottom-up
                 Vector2 vpTL = new Vector2(det.box.xMin, 1f - det.box.yMin);
                 Vector2 vpTR = new Vector2(det.box.xMax, 1f - det.box.yMin);
                 Vector2 vpBR = new Vector2(det.box.xMax, 1f - det.box.yMax);
                 Vector2 vpBL = new Vector2(det.box.xMin, 1f - det.box.yMax);
 
-                // Project rays from camera through viewport points
                 tl = pcaRef.ViewportPointToRay(vpTL).GetPoint(displayDistance);
                 tr = pcaRef.ViewportPointToRay(vpTR).GetPoint(displayDistance);
                 br = pcaRef.ViewportPointToRay(vpBR).GetPoint(displayDistance);
@@ -191,7 +171,6 @@ public class BoundingBoxRenderer : MonoBehaviour
             }
             else
             {
-                // Fallback: simple projection
                 float dw = displayWidth;
                 float dh = displayWidth * 0.75f;
                 Vector3 origin = anchor.position + anchor.forward * displayDistance;
@@ -205,36 +184,46 @@ public class BoundingBoxRenderer : MonoBehaviour
                 bl = origin + anchor.right * left + anchor.up * bottom;
             }
 
+            // Update LineRenderer
+            var color = GetClassColor(det.classId);
             var lr = boxObj.GetComponent<LineRenderer>();
             if (lr != null)
             {
-                // Set color based on class
-                var color = GetClassColor(det.classId);
                 var mat = GetClassMaterial(det.classId);
                 if (mat != null) lr.material = mat;
                 lr.startColor = color;
                 lr.endColor = color;
-
                 lr.SetPosition(0, tl);
                 lr.SetPosition(1, tr);
                 lr.SetPosition(2, br);
                 lr.SetPosition(3, bl);
                 lr.SetPosition(4, tl);
             }
+
+            // Update TMP label — inside box at top edge
+            var tmp = boxObj.GetComponentInChildren<TextMeshPro>();
+            if (tmp != null)
+            {
+                tmp.text = $"<b>{det.className}</b> {det.confidence:P0}";
+                tmp.color = color;
+                // Position at top-left, slightly inside the box
+                Vector3 topEdge = tl + (tr - tl) * 0.05f + (bl - tl) * 0.05f;
+                tmp.transform.position = topEdge;
+                tmp.transform.rotation = Quaternion.LookRotation(
+                    topEdge - anchor.position, anchor.up);
+                // Scale label proportional to box height
+                float boxHeight = Vector3.Distance(tl, bl);
+                tmp.fontSize = Mathf.Clamp(boxHeight * 2f, 0.2f, 0.8f);
+            }
         }
     }
 
     static Material CreateUnlitMaterial(Color color)
     {
-        // Try URP shader first, fallback to built-in
         var shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Unlit/Color");
         if (shader == null) shader = Shader.Find("UI/Default");
-        if (shader == null)
-        {
-            Debug.LogError("[BBR] No shader found!");
-            return null;
-        }
+        if (shader == null) return null;
         var mat = new Material(shader);
         mat.color = color;
         return mat;
@@ -261,12 +250,28 @@ public class BoundingBoxRenderer : MonoBehaviour
             return boxPool[index];
 
         var box = new GameObject($"DetBox_{index}");
+
+        // LineRenderer for box outline
         var lr = box.AddComponent<LineRenderer>();
         lr.positionCount = 5;
         lr.loop = false;
         lr.useWorldSpace = true;
         lr.startWidth = lineWidth;
         lr.endWidth = lineWidth;
+
+        // TMP label as child
+        var labelObj = new GameObject("Label");
+        labelObj.transform.SetParent(box.transform, false);
+        var tmp = labelObj.AddComponent<TextMeshPro>();
+        tmp.fontSize = labelSize;
+        tmp.alignment = TextAlignmentOptions.TopLeft;
+        tmp.enableWordWrapping = false;
+        tmp.overflowMode = TextOverflowModes.Overflow;
+        tmp.sortingOrder = 10;
+        tmp.enableAutoSizing = false;
+        var rt = tmp.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(0.5f, 0.1f);
+        rt.pivot = new Vector2(0f, 0f);
 
         boxPool.Add(box);
         return box;
