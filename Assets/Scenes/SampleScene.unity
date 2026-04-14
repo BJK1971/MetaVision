@@ -553,6 +553,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100004, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2013981725}
+    - targetCorrespondingSourceObject: {fileID: 100004, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2013981730}
     - targetCorrespondingSourceObject: {fileID: 100006, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1314263233}
@@ -809,12 +812,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99870356353d6cc44b41738f4d0eca07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoundingBoxRenderer
-  boxColor: {r: 0, g: 1, b: 0, a: 1}
-  boxThickness: 2
-  fontSize: 16
-  canvasDistance: 2
-  canvasScale: 0.001
-  showDebugInfo: 1
+  displayDistance: 2
+  displayWidth: 1.2
+  lineWidth: 0.005
+  labelSize: 0.4
 --- !u!114 &1730786700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -827,13 +828,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da96da429eb39da4695c9387a8338cc9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::YoloDetector
-  modelAsset: {fileID: 5022602860645237092, guid: 02cc4c17669afa54c92fedbcf008d7ba, type: 3}
+  modelAsset: {fileID: 5022602860645237092, guid: b1d03597cd621904194725039863bcc2, type: 3}
   confidenceThreshold: 0.5
   nmsThreshold: 0.45
   maxDetections: 20
+  inferenceInterval: 3
   testTexture: {fileID: 0}
-  inputWidth: 640
-  inputHeight: 640
+  inputWidth: 320
+  inputHeight: 320
   passthroughCamera: {fileID: 2013981725}
 --- !u!4 &1730786701
 Transform:
@@ -976,6 +978,22 @@ MonoBehaviour:
   _maxFramerate: 60
   TargetMaterial: {fileID: 0}
   _texturePropertyName: 
+--- !u!114 &2013981730
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1314263224}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a155ece80369d4e99bdaf5e59169b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Meta.XR.EnvironmentDepth::Meta.XR.EnvironmentDepth.EnvironmentDepthManager
+  _occlusionShadersMode: 2
+  _removeHands: 1
+  CustomTrackingSpace: {fileID: 0}
+  <MaskMeshFilters>k__BackingField: []
 --- !u!1 &2074535318
 GameObject:
   m_ObjectHideFlags: 0
