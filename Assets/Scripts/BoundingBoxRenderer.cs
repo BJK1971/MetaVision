@@ -10,9 +10,9 @@ using UnityEngine;
 public class BoundingBoxRenderer : MonoBehaviour
 {
     [Header("Rendering")]
-    public Color boxColor = Color.green;
     public float displayDistance = 2f;
     public float displayWidth = 1.2f;
+    public float lineWidth = 0.005f;
 
     YoloDetector detector;
     List<YoloDetector.Detection> currentDetections = new();
@@ -21,6 +21,40 @@ public class BoundingBoxRenderer : MonoBehaviour
     GameObject statusIndicator;
     Material statusMat;
     List<GameObject> boxPool = new();
+    Dictionary<int, Material> classMaterials = new();
+
+    // Colors by class category
+    static readonly Dictionary<int, Color> ClassColors = new()
+    {
+        // person
+        {0, Color.green},
+        // vehicles
+        {1, new Color(0.2f, 0.6f, 1f)},  // bicycle - blue
+        {2, new Color(0.2f, 0.6f, 1f)},  // car
+        {3, new Color(0.2f, 0.6f, 1f)},  // motorcycle
+        {4, new Color(0.2f, 0.6f, 1f)},  // airplane
+        {5, new Color(0.2f, 0.6f, 1f)},  // bus
+        {6, new Color(0.2f, 0.6f, 1f)},  // train
+        {7, new Color(0.2f, 0.6f, 1f)},  // truck
+        {8, new Color(0.2f, 0.6f, 1f)},  // boat
+        // animals
+        {14, Color.yellow}, {15, Color.yellow}, {16, Color.yellow}, {17, Color.yellow},
+        {18, Color.yellow}, {19, Color.yellow}, {20, Color.yellow}, {21, Color.yellow},
+        {22, Color.yellow}, {23, Color.yellow},
+        // electronics
+        {62, Color.cyan}, {63, Color.cyan}, {64, Color.cyan}, {65, Color.cyan},
+        {66, Color.cyan}, {67, Color.cyan},
+        // food
+        {46, new Color(1f, 0.5f, 0f)}, {47, new Color(1f, 0.5f, 0f)},
+        {48, new Color(1f, 0.5f, 0f)}, {49, new Color(1f, 0.5f, 0f)},
+        {50, new Color(1f, 0.5f, 0f)}, {51, new Color(1f, 0.5f, 0f)},
+        {52, new Color(1f, 0.5f, 0f)}, {53, new Color(1f, 0.5f, 0f)},
+        {54, new Color(1f, 0.5f, 0f)}, {55, new Color(1f, 0.5f, 0f)},
+        // furniture
+        {56, new Color(0.8f, 0.4f, 1f)}, {57, new Color(0.8f, 0.4f, 1f)},
+        {58, new Color(0.8f, 0.4f, 1f)}, {59, new Color(0.8f, 0.4f, 1f)},
+        {60, new Color(0.8f, 0.4f, 1f)}, {61, new Color(0.8f, 0.4f, 1f)},
+    };
     float logTimer;
     int totalFrames;
 
@@ -120,7 +154,7 @@ public class BoundingBoxRenderer : MonoBehaviour
         {
             logTimer = 0;
             int detCount = currentDetections?.Count ?? 0;
-            Debug.Log($"[BBR] {status} | Det:{detCount} | F:{totalFrames}");
+            Debug.Log($"[BBR] {status} | Det:{detCount} | F:{totalFrames} | {detector.InferenceTimeMs:F0}ms");
         }
 
         // Clear old boxes
@@ -174,6 +208,13 @@ public class BoundingBoxRenderer : MonoBehaviour
             var lr = boxObj.GetComponent<LineRenderer>();
             if (lr != null)
             {
+                // Set color based on class
+                var color = GetClassColor(det.classId);
+                var mat = GetClassMaterial(det.classId);
+                if (mat != null) lr.material = mat;
+                lr.startColor = color;
+                lr.endColor = color;
+
                 lr.SetPosition(0, tl);
                 lr.SetPosition(1, tr);
                 lr.SetPosition(2, br);
@@ -199,6 +240,21 @@ public class BoundingBoxRenderer : MonoBehaviour
         return mat;
     }
 
+    Color GetClassColor(int classId)
+    {
+        return ClassColors.TryGetValue(classId, out var c) ? c : Color.white;
+    }
+
+    Material GetClassMaterial(int classId)
+    {
+        if (classMaterials.TryGetValue(classId, out var mat))
+            return mat;
+        var color = GetClassColor(classId);
+        mat = CreateUnlitMaterial(color);
+        classMaterials[classId] = mat;
+        return mat;
+    }
+
     GameObject GetOrCreateBox(int index)
     {
         if (index < boxPool.Count)
@@ -206,16 +262,11 @@ public class BoundingBoxRenderer : MonoBehaviour
 
         var box = new GameObject($"DetBox_{index}");
         var lr = box.AddComponent<LineRenderer>();
-        lr.positionCount = 5; // 4 corners + close
+        lr.positionCount = 5;
         lr.loop = false;
         lr.useWorldSpace = true;
-        lr.startWidth = 0.005f;
-        lr.endWidth = 0.005f;
-        var mat = CreateUnlitMaterial(boxColor);
-        if (mat != null)
-            lr.material = mat;
-        lr.startColor = boxColor;
-        lr.endColor = boxColor;
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
 
         boxPool.Add(box);
         return box;

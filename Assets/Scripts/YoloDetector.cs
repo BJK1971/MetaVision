@@ -20,6 +20,10 @@ public class YoloDetector : MonoBehaviour
     [Range(0.1f, 1f)] public float nmsThreshold = 0.45f;
     [Range(1, 50)] public int maxDetections = 20;
 
+    [Header("Performance")]
+    [Tooltip("Run inference every N frames (1=every frame, 3=skip 2)")]
+    [Range(1, 10)] public int inferenceInterval = 3;
+
     [Header("Input")]
     public Texture2D testTexture; // Fallback for Editor testing
     public int inputWidth = 640;
@@ -31,6 +35,9 @@ public class YoloDetector : MonoBehaviour
     Worker worker;
     Model model;
     Tensor<float> inputTensor;
+    int frameCounter;
+    float lastInferenceTime;
+    public float InferenceTimeMs => lastInferenceTime;
 
     public event Action<List<Detection>> OnDetections;
 
@@ -89,24 +96,27 @@ public class YoloDetector : MonoBehaviour
     {
         if (worker == null || sourceTexture == null) return;
 
-        // Convert texture to input tensor (resizes + normalizes to 0-1)
-        TextureConverter.ToTensor(sourceTexture, inputTensor, new TextureTransform());
+        float t0 = Time.realtimeSinceStartup;
 
-        // Run inference
+        TextureConverter.ToTensor(sourceTexture, inputTensor, new TextureTransform());
         worker.Schedule(inputTensor);
 
-        // Read output: shape (1, 84, 8400)
         var gpuOutput = worker.PeekOutput() as Tensor<float>;
         if (gpuOutput == null) return;
 
-        // Clone to CPU for reading
         using var cpuOutput = gpuOutput.ReadbackAndClone();
+        lastInferenceTime = (Time.realtimeSinceStartup - t0) * 1000f;
+
         var detections = PostProcess(cpuOutput);
         OnDetections?.Invoke(detections);
     }
 
     void Update()
     {
+        // Frame skipping
+        frameCounter++;
+        if (frameCounter % inferenceInterval != 0) return;
+
         // Priority: live camera > test texture
         if (passthroughCamera != null && passthroughCamera.IsPlaying)
         {
