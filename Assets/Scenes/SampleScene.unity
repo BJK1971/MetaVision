@@ -885,10 +885,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99870356353d6cc44b41738f4d0eca07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoundingBoxRenderer
-  displayDistance: 2
+  maxDistance: 5
+  minDistance: 0.5
   displayWidth: 1.2
   lineWidth: 0.005
   labelSize: 0.4
+  boxDepthFactor: 0.15
+  render3DBoxes: 0
 --- !u!114 &1730786700
 MonoBehaviour:
   m_ObjectHideFlags: 0
