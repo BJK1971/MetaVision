@@ -22,7 +22,7 @@ public class YoloDetector : MonoBehaviour
 
     [Header("Performance")]
     [Tooltip("Run inference every N frames (1=every frame, 3=skip 2)")]
-    [Range(1, 10)] public int inferenceInterval = 3;
+    [Range(1, 10)] public int inferenceInterval = 1;
 
     [Header("Input")]
     public Texture2D testTexture; // Fallback for Editor testing
